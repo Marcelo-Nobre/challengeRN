@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  Pressable,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -15,6 +14,7 @@ import type { RootStackParamList } from '../../../app/routes/types';
 import { BackgroundBubbles, EmptyState, LoadingState, Icon } from '../../../components';
 import { theme } from '../../../app/styles/theme';
 import { useWordList } from '../store/useWordList';
+import { WordListItem } from '../components/WordListItem';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
 
@@ -32,23 +32,10 @@ export function WordListScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: string }) => (
-      <Pressable
-        style={({ pressed }) => [
-          styles.card,
-          pressed && styles.cardPressed,
-        ]}
+      <WordListItem
+        word={item}
         onPress={() => navigation.navigate('WordDetail', { word: item })}
-      >
-        <Text style={styles.wordText} numberOfLines={1}>
-          {item}
-        </Text>
-        <Icon
-          name="chevron-forward"
-          size={22}
-          color={theme.colors.textMuted}
-          style={styles.chevronIcon}
-        />
-      </Pressable>
+      />
     ),
     [navigation]
   );
@@ -169,30 +156,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.xxl,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.xl,
-    marginBottom: theme.spacing.sm,
-    ...theme.shadow.sm,
-  },
-  cardPressed: {
-    opacity: 0.85,
-    backgroundColor: theme.colors.borderLight,
-  },
-  wordText: {
-    flex: 1,
-    ...theme.typography.body,
-    color: theme.colors.text,
-    fontWeight: '500',
-  },
-  chevronIcon: {
-    marginLeft: theme.spacing.sm,
   },
   footer: {
     padding: theme.spacing.xl,

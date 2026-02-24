@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
   ensureWordsListSeeded,
   getWordsPaginated,
@@ -7,16 +7,12 @@ import {
   searchWordsCount,
 } from '../../../db';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 const SEED_QUERY_KEY = 'seedWords';
+const WORD_LIST_QUERY_KEY = 'wordList';
 
 export function useWordList() {
-  const [words, setWords] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const loadingRef = useRef(false);
 
   const { isLoading: seeding } = useQuery({
     queryKey: [SEED_QUERY_KEY],
@@ -25,43 +21,48 @@ export function useWordList() {
     gcTime: Number.POSITIVE_INFINITY,
   });
 
-  const loadPage = useCallback(
-    (currentOffset: number, append: boolean, term: string) => {
-      if (loadingRef.current) return;
-      loadingRef.current = true;
-      setLoading(true);
-      try {
-        const chunk =
-          term.trim() === ''
-            ? getWordsPaginated(PAGE_SIZE, currentOffset)
-            : searchWords(term.trim(), PAGE_SIZE, currentOffset);
-        setWords((prev) => (append ? [...prev, ...chunk] : chunk));
-        setHasMore(chunk.length === PAGE_SIZE);
-        setOffset(currentOffset + chunk.length);
-      } finally {
-        loadingRef.current = false;
-        setLoading(false);
-      }
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: [WORD_LIST_QUERY_KEY, normalizedSearch],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const offset = pageParam as number;
+      const term = normalizedSearch;
+      const chunk =
+        term === ''
+          ? getWordsPaginated(PAGE_SIZE, offset)
+          : searchWords(term, PAGE_SIZE, offset);
+      return {
+        items: chunk,
+        nextOffset: offset + chunk.length,
+      };
     },
-    []
-  );
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length === PAGE_SIZE ? lastPage.nextOffset : undefined,
+    enabled: !seeding,
+  });
 
-  useEffect(() => {
-    if (seeding) return;
-    setOffset(0);
-    setWords([]);
-    setHasMore(true);
-    loadingRef.current = false;
-    setLoading(false);
-    loadPage(0, false, searchTerm);
-  }, [searchTerm, seeding, loadPage]);
+  const words =
+    data?.pages.flatMap((page) => page.items) ?? [];
 
-  const loadMore = useCallback(() => {
-    if (!loading && hasMore) loadPage(offset, true, searchTerm);
-  }, [loading, hasMore, offset, searchTerm, loadPage]);
+  const loadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  const loading = isLoading || isFetchingNextPage;
+  const hasMore = !!hasNextPage;
 
   const totalWhenSearch =
-    searchTerm.trim() === '' ? null : searchWordsCount(searchTerm.trim());
+    normalizedSearch === '' ? null : searchWordsCount(normalizedSearch);
 
   return {
     words,

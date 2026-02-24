@@ -1,6 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { FavoritesProvider } from './context/FavoritesContext';
 import { AppStack } from './routes';
@@ -9,15 +12,23 @@ import { theme } from './styles/theme';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 60 * 24,
+      staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 60 * 24 * 7,
     },
   },
 });
 
+const asyncStoragePersister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: 'DICTIONARY_QUERY_CACHE',
+});
+
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister: asyncStoragePersister }}
+    >
       <SafeAreaProvider>
         <FavoritesProvider>
         <StatusBar
@@ -47,6 +58,6 @@ export function App() {
         </NavigationContainer>
         </FavoritesProvider>
       </SafeAreaProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

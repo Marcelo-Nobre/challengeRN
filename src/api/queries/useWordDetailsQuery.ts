@@ -9,8 +9,6 @@ async function fetchWordDetail(word: string): Promise<DictionaryEntry[] | null> 
   const normalized = word.trim().toLowerCase();
   if (!normalized) return null;
 
-  const cached = getCachedWordDetails(normalized);
-
   try {
     const fromApi = await getWordDetails(normalized);
 
@@ -19,12 +17,10 @@ async function fetchWordDetail(word: string): Promise<DictionaryEntry[] | null> 
       return fromApi;
     }
 
-    return cached ?? null;
+    return getCachedWordDetails(normalized) ?? null;
   } catch {
-    if (cached && cached.length > 0) {
-      return cached;
-    }
-
+    const cached = getCachedWordDetails(normalized);
+    if (cached && cached.length > 0) return cached;
     throw new Error('Failed to fetch word details and no local cache is available.');
   }
 }
@@ -36,7 +32,7 @@ export function useWordDetailsQuery(word: string) {
     queryKey: [WORD_DETAIL_QUERY_KEY, normalized],
     queryFn: () => fetchWordDetail(normalized),
     enabled: normalized.length > 0,
-    staleTime: 1000 * 60 * 60 * 24,
+    staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 60 * 24 * 7,
   });
 }

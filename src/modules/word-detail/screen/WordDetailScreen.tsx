@@ -59,40 +59,9 @@ export function WordDetailScreen({ route, navigation }: Props) {
 
   const headerPaddingTop = Platform.OS === 'ios' ? insets.top : insets.top + 8;
 
-  if (loading) {
-    return (
-      <BackgroundBubbles>
-        <LoadingState message="Loading..." />
-      </BackgroundBubbles>
-    );
-  }
-
-  if (error || !entry) {
-    return (
-      <BackgroundBubbles>
-        <View style={styles.wrapper}>
-          <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
-            <Pressable
-              style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
-              onPress={() => navigation.goBack()}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Icon name="arrow-back" size={24} color={theme.colors.primary} />
-            </Pressable>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              Details
-            </Text>
-            <View style={styles.headerSpacer} />
-          </View>
-          <ErrorState message={error ?? 'Word not found.'} />
-        </View>
-      </BackgroundBubbles>
-    );
-  }
-
   const meaningsListData = useMemo(
-    () => buildMeaningsList(entry.meanings ?? []),
-    [entry.meanings]
+    () => buildMeaningsList(entry?.meanings ?? []),
+    [entry?.meanings]
   );
 
   const renderListItem = useCallback(
@@ -133,6 +102,37 @@ export function WordDetailScreen({ route, navigation }: Props) {
     },
     []
   );
+
+  if (loading) {
+    return (
+      <BackgroundBubbles>
+        <LoadingState message="Loading..." />
+      </BackgroundBubbles>
+    );
+  }
+
+  if (error || !entry) {
+    return (
+      <BackgroundBubbles>
+        <View style={styles.wrapper}>
+          <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+            <Pressable
+              style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Icon name="arrow-back" size={24} color={theme.colors.primary} />
+            </Pressable>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              Details
+            </Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <ErrorState message={error ?? 'Word not found.'} />
+        </View>
+      </BackgroundBubbles>
+    );
+  }
 
   const listHeader = (
     <View style={styles.hero}>
