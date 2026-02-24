@@ -56,15 +56,34 @@ Na primeira execução o app faz o **seed da base de palavras** baixando o arqui
 
 ---
 
-## Arquitetura (alto nível)
+## Arquitetura (alto nível / MVVM)
 
-- `src/app` – App root, navegação, tema, providers (React Query, Context de favoritos)
-- `src/modules/word-list` – Tela de listagem de palavras (busca + infinite scroll)
-- `src/modules/word-detail` – Tela de detalhes da palavra (fonética, significados, exemplos, áudio, favorito)
-- `src/modules/favorites` – Tela de favoritos
-- `src/api` – Clientes HTTP (Free Dictionary API, dwyl words) + React Query hooks
-- `src/db` – Acesso ao SQLite (tabelas `words`, `favorites`, `word_cache`)
-- `src/components` – Componentes compartilhados (Loading, Empty/Error, ícones, background etc.)
+- **View (V)**  
+  - Telas e componentes de UI:
+    - `WordListScreen`, `WordDetailScreen`, `FavoritesScreen`
+    - Componentes visuais como `WordListItem`, estados de loading/empty, etc.
+
+- **ViewModel (VM)**  
+  - Hooks que encapsulam lógica de tela, estado e orquestração de dados:
+    - `useWordList` – lista de palavras, busca, paginação/infinite scroll.
+    - `useWordDetail` – detalhes da palavra, cache, áudio e favorito.
+    - `useFavoritesList` – lista de palavras favoritas.
+  - As Views consomem apenas dados prontos para render (`words`, `entry`, `favorites`) e ações (`loadMore`, `toggleFavorite`, `playAudio`), sem conhecer detalhes de API/DB.
+
+- **Model (M)**  
+  - Camada de dados e acesso:
+    - `src/api` – clientes HTTP (Free Dictionary API, dwyl words) + hooks React Query.
+    - `src/db` – acesso ao SQLite (`words`, `favorites`, `word_cache`) e seed da base.
+    - Tipos de domínio (`DictionaryEntry`, `Meaning`, `Definition`, etc.).
+
+- **Estrutura de pastas**  
+  - `src/app` – App root, navegação, tema, providers (React Query, Context de favoritos)
+  - `src/modules/word-list` – fluxo de listagem de palavras (Views + ViewModels)
+  - `src/modules/word-detail` – fluxo de detalhes da palavra
+  - `src/modules/favorites` – fluxo de favoritos
+  - `src/api` – camada de acesso à API externa
+  - `src/db` – camada de persistência local em SQLite
+  - `src/components` – componentes compartilhados (Loading, Empty/Error, ícones, background, etc.)
 
 ---
 
