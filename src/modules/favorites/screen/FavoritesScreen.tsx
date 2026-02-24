@@ -4,7 +4,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../app/routes/types';
-import { EmptyState, Icon } from '../../../components';
+import { BackgroundBubbles, EmptyState, Icon } from '../../../components';
 import { theme } from '../../../app/styles/theme';
 import { useFavoritesList } from '../store/useFavoritesList';
 
@@ -46,28 +46,30 @@ export function FavoritesScreen() {
   const keyExtractor = useCallback((item: string) => item, []);
 
   return (
-    <View style={styles.container}>
-      <FlashList
-        data={favorites}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <EmptyState
-            iconName="star-outline"
-            title="Nenhum favorito ainda"
-            message="Toque em uma palavra na aba Lista e use «Favoritar» nos detalhes para adicionar aqui."
-          />
-        }
-      />
-    </View>
+    <BackgroundBubbles>
+      <View style={styles.container}>
+        <FlashList
+          data={favorites}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <EmptyState
+              iconName="star-outline"
+              title="No favourites yet"
+              message="Tap a word in the List tab and add it to favourites from the details screen."
+            />
+          }
+        />
+      </View>
+    </BackgroundBubbles>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: 'transparent',
   },
   listContent: {
     paddingHorizontal: theme.spacing.lg,

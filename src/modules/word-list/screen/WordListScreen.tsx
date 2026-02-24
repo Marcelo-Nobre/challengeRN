@@ -12,7 +12,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../app/routes/types';
-import { EmptyState, LoadingState, Icon } from '../../../components';
+import { BackgroundBubbles, EmptyState, LoadingState, Icon } from '../../../components';
 import { theme } from '../../../app/styles/theme';
 import { useWordList } from '../store/useWordList';
 
@@ -57,15 +57,18 @@ export function WordListScreen() {
 
   if (seeding) {
     return (
-      <LoadingState
-        message="Preparando lista de palavras…"
-        submessage="Isso só acontece na primeira vez"
-      />
+      <BackgroundBubbles>
+        <LoadingState
+          message="Preparing word list…"
+          submessage="This only happens the first time"
+        />
+      </BackgroundBubbles>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <BackgroundBubbles>
+      <View style={styles.container}>
       <View style={styles.searchWrap}>
         <Icon
           name="search"
@@ -75,7 +78,7 @@ export function WordListScreen() {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar palavra em inglês..."
+          placeholder="Search for a word in English..."
           placeholderTextColor={theme.colors.textMuted}
           value={searchTerm}
           onChangeText={setSearchTerm}
@@ -110,26 +113,27 @@ export function WordListScreen() {
               iconName="book-outline"
               message={
                 searchTerm.trim() === ''
-                  ? 'Nenhuma palavra na lista'
-                  : 'Nenhum resultado para esta busca'
+                  ? 'No words in the list'
+                  : 'No results for this search'
               }
               submessage={
                 searchTerm.trim() === ''
-                  ? 'A lista será carregada em instantes.'
-                  : 'Tente outro termo.'
+                  ? 'The list will load shortly.'
+                  : 'Try another term.'
               }
             />
           ) : null
         }
       />
     </View>
+    </BackgroundBubbles>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: 'transparent',
   },
   searchWrap: {
     flexDirection: 'row',

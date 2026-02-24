@@ -1,14 +1,51 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../app/routes/types';
-import { ErrorState, LoadingState, Icon } from '../../../components';
+import { BackgroundBubbles, ErrorState, LoadingState, Icon } from '../../../components';
 import { theme } from '../../../app/styles/theme';
+import type { Meaning } from '../../../api/types';
 import { useWordDetail } from '../store/useWordDetail';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WordDetail'>;
 
-export function WordDetailScreen({ route }: Props) {
+type MeaningListItem =
+  | { type: 'section'; id: string; title: string }
+  | { type: 'meaning'; id: string; meaning: Meaning };
+
+/** Considera "como sigla" quando a maioria das definições começa com initialism/abbreviation/short for/acronym. */
+function isAcronymMeaning(meaning: Meaning): boolean {
+  const pattern = /^(initialism of|abbreviation of|short for|acronym for|abbrev\. of)/i;
+  const defs = meaning.definitions ?? [];
+  if (defs.length === 0) return false;
+  const matchCount = defs.filter((d) => pattern.test((d.definition ?? '').trim())).length;
+  return matchCount > defs.length / 2;
+}
+
+function buildMeaningsList(meanings: Meaning[]): MeaningListItem[] {
+  const acronymMeanings = meanings.filter(isAcronymMeaning);
+  const wordMeanings = meanings.filter((m) => !isAcronymMeaning(m));
+  const items: MeaningListItem[] = [];
+  if (acronymMeanings.length > 0) {
+    items.push({ type: 'section', id: 'section-acronym', title: 'As acronym / initialism' });
+    acronymMeanings.forEach((m, i) => items.push({ type: 'meaning', id: `acronym-${i}`, meaning: m }));
+  }
+  if (wordMeanings.length > 0) {
+    items.push({ type: 'section', id: 'section-word', title: 'As word' });
+    wordMeanings.forEach((m, i) => items.push({ type: 'meaning', id: `word-${i}`, meaning: m }));
+  }
+  if (items.length === 0) {
+    items.push({ type: 'section', id: 'section-meanings', title: 'Meanings' });
+    meanings.forEach((m, i) => items.push({ type: 'meaning', id: `meaning-${i}`, meaning: m }));
+  }
+  return items;
+}
+
+export function WordDetailScreen({ route, navigation }: Props) {
   const { word } = route.params;
+  const insets = useSafeAreaInsets();
   const {
     loading,
     error,
@@ -20,106 +57,215 @@ export function WordDetailScreen({ route }: Props) {
     toggleFavorite,
   } = useWordDetail(word);
 
+  const headerPaddingTop = Platform.OS === 'ios' ? insets.top : insets.top + 8;
+
   if (loading) {
-    return <LoadingState message="Carregando..." />;
+    return (
+      <BackgroundBubbles>
+        <LoadingState message="Loading..." />
+      </BackgroundBubbles>
+    );
   }
 
   if (error || !entry) {
     return (
-      <ErrorState message={error ?? 'Palavra não encontrada.'} />
+      <BackgroundBubbles>
+        <View style={styles.wrapper}>
+          <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+            <Pressable
+              style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Icon name="arrow-back" size={24} color={theme.colors.primary} />
+            </Pressable>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              Details
+            </Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <ErrorState message={error ?? 'Word not found.'} />
+        </View>
+      </BackgroundBubbles>
     );
   }
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.hero}>
-        <Text style={styles.word}>{entry.word}</Text>
-        {entry.phonetic && (
-          <View style={styles.phoneticWrap}>
-            <Text style={styles.phonetic}>{entry.phonetic}</Text>
+  const meaningsListData = useMemo(
+    () => buildMeaningsList(entry.meanings ?? []),
+    [entry.meanings]
+  );
+
+  const renderListItem = useCallback(
+    ({ item }: { item: MeaningListItem }) => {
+      if (item.type === 'section') {
+        return (
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleLine} />
+            <Text style={styles.sectionTitle}>{item.title}</Text>
           </View>
-        )}
-        <View style={styles.actions}>
-          {firstAudioUrl && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.audioBtn,
-                playingAudio && styles.audioBtnDisabled,
-                pressed && !playingAudio && styles.btnPressed,
-              ]}
-              onPress={() => playAudio(firstAudioUrl)}
-              disabled={playingAudio}
-            >
-              <Icon
-                name={playingAudio ? 'hourglass-outline' : 'play'}
-                size={20}
-                color="#fff"
-                style={styles.audioBtnIcon}
-              />
-              <Text style={styles.audioBtnText}>
-                {playingAudio ? 'Abrindo...' : 'Ouvir pronúncia'}
-              </Text>
-            </Pressable>
-          )}
-          <Pressable
-            style={({ pressed }) => [
-              styles.favBtn,
-              favorited && styles.favBtnActive,
-              pressed && styles.btnPressed,
-            ]}
-            onPress={() => toggleFavorite(word)}
-          >
-            <Icon
-              name={favorited ? 'star' : 'star-outline'}
-              size={20}
-              color={favorited ? theme.colors.accent : theme.colors.text}
-              style={styles.favBtnIcon}
-            />
-            <Text style={[styles.favBtnText, favorited && styles.favBtnTextActive]}>
-              {favorited ? 'Favorita' : 'Favoritar'}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Significados</Text>
-
-      {entry.meanings?.map((meaning, idx) => (
-        <View key={idx} style={styles.section}>
+        );
+      }
+      const meaning = item.meaning;
+      const defs = meaning.definitions?.slice(0, 6) ?? [];
+      return (
+        <View style={styles.section}>
           <View style={styles.partOfSpeechBadge}>
             <Text style={styles.partOfSpeech}>{meaning.partOfSpeech}</Text>
           </View>
           <View style={styles.definitions}>
-            {meaning.definitions?.slice(0, 6).map((def, i, arr) => (
+            {defs.map((def, i, arr) => (
               <View
                 key={i}
                 style={[styles.definition, i === arr.length - 1 && styles.definitionLast]}
               >
-                <Text style={styles.definitionText}>{def.definition}</Text>
-                {def.example && (
-                  <Text style={styles.example}>«{def.example}»</Text>
-                )}
+                <Text style={styles.definitionIndex}>{i + 1}</Text>
+                <View style={styles.definitionContent}>
+                  <Text style={styles.definitionText}>{def.definition}</Text>
+                  {def.example ? (
+                    <Text style={styles.example}>«{def.example}»</Text>
+                  ) : null}
+                </View>
               </View>
             ))}
           </View>
         </View>
-      ))}
-    </ScrollView>
+      );
+    },
+    []
+  );
+
+  const listHeader = (
+    <View style={styles.hero}>
+      <View style={styles.heroTop}>
+        <Text style={styles.wordLabel}>Word:</Text>
+        <Text style={styles.word} numberOfLines={1}>
+          {entry.word}
+        </Text>
+        {entry.phonetic ? (
+          <View style={styles.phoneticWrap}>
+            <Text style={styles.phonetic}>{entry.phonetic}</Text>
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.actions}>
+        {firstAudioUrl ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionBtn,
+              styles.audioBtn,
+              playingAudio && styles.audioBtnDisabled,
+              pressed && !playingAudio && styles.btnPressed,
+            ]}
+            onPress={() => playAudio(firstAudioUrl)}
+            disabled={playingAudio}
+          >
+            <Icon
+              name={playingAudio ? 'hourglass-outline' : 'play'}
+              size={20}
+              color="#fff"
+              style={styles.actionBtnIcon}
+            />
+            <Text style={styles.audioBtnText} numberOfLines={1}>
+              {playingAudio ? 'Opening...' : 'Play'}
+            </Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          style={({ pressed }) => [
+            styles.actionBtn,
+            styles.favBtn,
+            favorited && styles.favBtnActive,
+            pressed && styles.btnPressed,
+          ]}
+          onPress={() => toggleFavorite(word)}
+        >
+          <Icon
+            name={favorited ? 'star' : 'star-outline'}
+            size={20}
+            color={favorited ? theme.colors.accent : theme.colors.text}
+            style={styles.actionBtnIcon}
+          />
+          <Text style={[styles.favBtnText, favorited && styles.favBtnTextActive]} numberOfLines={1}>
+            {favorited ? 'Favourite' : 'Add to favourites'}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  return (
+    <BackgroundBubbles>
+      <View style={styles.wrapper}>
+        <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <Pressable
+            style={({ pressed }) => [styles.backBtn, pressed && styles.btnPressed]}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Icon name="arrow-back" size={24} color={theme.colors.primary} />
+          </Pressable>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            Details
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <FlashList
+          data={meaningsListData}
+          renderItem={renderListItem}
+          keyExtractor={(item) => item.id}
+          getItemType={(item) => item.type}
+          ListHeaderComponent={listHeader}
+          style={styles.container}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: theme.spacing.section + insets.bottom + theme.spacing.xxl },
+          ]}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    </BackgroundBubbles>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    minHeight: 56,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.sm,
+  },
+  headerTitle: {
+    flex: 1,
+    ...theme.typography.title,
+    color: theme.colors.text,
+    marginRight: theme.spacing.sm,
+  },
+  headerSpacer: {
+    width: 44,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
   },
   content: {
     padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.section + theme.spacing.xxl,
   },
   hero: {
     backgroundColor: theme.colors.surface,
@@ -127,45 +273,58 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xxl,
     marginBottom: theme.spacing.xl,
     ...theme.shadow.md,
+    overflow: 'hidden',
+  },
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  wordLabel: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
+    marginRight: theme.spacing.sm,
   },
   word: {
-    fontSize: 36,
+    flex: 1,
+    fontSize: 32,
     fontWeight: '800',
     color: theme.colors.text,
-    letterSpacing: -0.8,
-    lineHeight: 42,
+    letterSpacing: -0.6,
+    lineHeight: 40,
   },
   phoneticWrap: {
-    marginTop: theme.spacing.md,
-    alignSelf: 'flex-start',
     backgroundColor: theme.colors.borderLight,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.radius.sm,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.md,
   },
   phonetic: {
-    fontSize: 16,
+    fontSize: 14,
     color: theme.colors.textSecondary,
     fontStyle: 'italic',
   },
   actions: {
     flexDirection: 'row',
     gap: theme.spacing.md,
-    marginTop: theme.spacing.xxl,
-    flexWrap: 'wrap',
   },
-  audioBtn: {
+  actionBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md + 2,
-    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md + 4,
     borderRadius: theme.radius.md,
+  },
+  audioBtn: {
+    backgroundColor: theme.colors.primary,
   },
   audioBtnDisabled: {
     opacity: 0.7,
   },
-  audioBtnIcon: {
+  actionBtnIcon: {
     marginRight: theme.spacing.sm,
   },
   audioBtnText: {
@@ -174,17 +333,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   favBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md + 2,
     backgroundColor: theme.colors.borderLight,
-    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-  },
-  favBtnIcon: {
-    marginRight: theme.spacing.sm,
   },
   favBtnActive: {
     backgroundColor: theme.colors.accentLight,
@@ -201,11 +352,21 @@ const styles = StyleSheet.create({
   btnPressed: {
     opacity: 0.85,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  sectionTitleLine: {
+    width: 4,
+    height: 22,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
+  },
   sectionTitle: {
     ...theme.typography.titleSmall,
     color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-    marginLeft: theme.spacing.xs,
   },
   section: {
     marginBottom: theme.spacing.xl,
@@ -216,8 +377,7 @@ const styles = StyleSheet.create({
   },
   partOfSpeechBadge: {
     alignSelf: 'flex-start',
-    marginTop: theme.spacing.lg,
-    marginLeft: theme.spacing.lg,
+    margin: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.primary,
     paddingHorizontal: theme.spacing.md,
@@ -236,13 +396,26 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
   },
   definition: {
+    flexDirection: 'row',
     marginBottom: theme.spacing.lg,
-    paddingLeft: theme.spacing.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.primaryLight,
+    gap: theme.spacing.md,
   },
   definitionLast: {
     marginBottom: 0,
+  },
+  definitionIndex: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primaryLight,
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  definitionContent: {
+    flex: 1,
   },
   definitionText: {
     ...theme.typography.body,

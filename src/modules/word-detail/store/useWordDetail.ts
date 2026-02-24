@@ -20,9 +20,9 @@ export function useWordDetail(word: string) {
 
   const error =
     queryError != null
-      ? (queryError instanceof Error ? queryError.message : 'Erro ao carregar.')
+      ? (queryError instanceof Error ? queryError.message : 'Error loading.')
       : !loading && data === null && normalized.length > 0
-        ? 'Palavra não encontrada.'
+        ? 'Word not found.'
         : null;
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export function useWordDetail(word: string) {
       SoundPlayer.playUrl(audioUrl);
     } catch {
       setPlayingAudio(false);
-      Alert.alert('Áudio', 'Não foi possível reproduzir a pronúncia.');
+      Alert.alert('Audio', 'Could not play pronunciation.');
     }
   }, [playingAudio]);
 

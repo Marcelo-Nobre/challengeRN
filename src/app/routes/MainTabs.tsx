@@ -54,6 +54,7 @@ export function MainTabs() {
           fontWeight: '700',
           color: theme.colors.text,
         },
+        headerTitleAlign: 'center',
         headerShadowVisible: false,
       }}
     >
@@ -61,8 +62,8 @@ export function MainTabs() {
         name="WordList"
         component={WordListScreen}
         options={{
-          title: 'Lista',
-          tabBarLabel: 'Lista',
+          title: 'List of words',
+          tabBarLabel: 'List',
           tabBarIcon: TabIconList,
         }}
       />
@@ -70,8 +71,8 @@ export function MainTabs() {
         name="Favorites"
         component={FavoritesScreen}
         options={{
-          title: 'Favoritos',
-          tabBarLabel: 'Favoritos',
+          title: 'Favourites',
+          tabBarLabel: 'Favourites',
           tabBarIcon: TabIconFavorites,
         }}
       />

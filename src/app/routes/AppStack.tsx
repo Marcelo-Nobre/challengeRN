@@ -32,10 +32,7 @@ export function AppStack() {
       <Stack.Screen
         name="WordDetail"
         component={WordDetailScreen}
-        options={({ route }) => ({
-          title: route.params.word,
-          headerLargeTitle: false,
-        })}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

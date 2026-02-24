@@ -8,7 +8,7 @@ type LoadingStateProps = {
 };
 
 export function LoadingState({
-  message = 'Carregando...',
+  message = 'Loading...',
   submessage,
   inCard = true,
 }: LoadingStateProps) {
