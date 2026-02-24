@@ -15,7 +15,6 @@ type MeaningListItem =
   | { type: 'section'; id: string; title: string }
   | { type: 'meaning'; id: string; meaning: Meaning };
 
-/** Considera "como sigla" quando a maioria das definições começa com initialism/abbreviation/short for/acronym. */
 function isAcronymMeaning(meaning: Meaning): boolean {
   const pattern = /^(initialism of|abbreviation of|short for|acronym for|abbrev\. of)/i;
   const defs = meaning.definitions ?? [];
